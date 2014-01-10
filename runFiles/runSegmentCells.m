@@ -26,6 +26,9 @@ function runSegmentCells(direc,outfile,nframes,...
 %   all saved in imgfiles().errorstr and if verboseSegmentCell = 1 then also
 %   printed errorStr to screen
 
+%JEK: place holder for even frames in si array
+
+x=217; 
 global userParam;
 
 try
@@ -49,11 +52,8 @@ else
     [smadrange{1}, smadfiles{1}]=folderFilesFromKeyword(direc,smadstring);
 end
 [nucrange, nucfiles]=folderFilesFromKeyword(direc,nucstring);
-[goodframes]=intersect(nucrange,smadrange{1});
-
-for ii=2:nImages
-    goodframes=intersect(goodframes,smadrange{ii});
-end
+%JEK: goodframes set to overlap between nuclear channel and first smad channel
+[goodframes]=intersect(nucrange,smadrange{1}); 
 
 %if reading in background images, get these file names
 if exist('backgroundstr','var')
@@ -82,16 +82,28 @@ for ii=1:min(nframes,length(goodframes))
     userParam.errorStr = sprintf('frame= %d\n', ii);
     
     ni=find(nucrange==goodframes(ii));
-    for xx=1:nImages
-        si(xx)=find(smadrange{xx}==goodframes(ii));
+     for xx=1:nImages
+        if isempty(find(smadrange{xx}==goodframes(ii)))
+        %JEK: if there is no match of smad channel in goodframes, fill in with
+        %place holder, otherwise continue
+            si(xx)=x;
+        else
+            si(xx)=find(smadrange{xx}==goodframes(ii));
+        end
     end
-    
-    %read the image files
+        %read the image files
     nucfilename=[direc filesep nucfiles(ni).name];
     nuc=imread(nucfilename);
     for xx=1:nImages
-        smadfilename{xx}=[direc filesep smadfiles{xx}(si(xx)).name];
-        fimg(:,:,xx)=imread(smadfilename{xx});
+        if si(xx)==x
+            smadfilename=[];
+            %JEK: empty array so that if there is no match there is only one
+            %cell
+            smadfilename{1}=[direc filesep smadfiles{1}(si(1)).name];
+        else
+            smadfilename{xx}=[direc filesep smadfiles{xx}(si(xx)).name];
+            fimg(:,:,xx)=imread(smadfilename{xx});
+        end
     end
     if length(size(nuc))==3
         nuc=squeeze(nuc(:,:,1));
@@ -147,7 +159,15 @@ for ii=1:min(nframes,length(goodframes))
         continue;
     end
     for xx=1:nImages
-        imgfiles(ii).smadfile{xx}=smadfiles{xx}(si(xx)).name;
+        if si(xx)==x
+            imgfiles=[];
+            %JEK: empty array so that if there is no match there is only one
+            %cell
+            imgfiles(ii).smadfile{1}=smadfiles{1}(si(1)).name;
+        else
+            imgfiles(ii).smadfile{xx}=smadfiles{xx}(si(xx)).name;
+        end
+        imgfiles(ii)
     end
     % copy over error string, NOTE different naming conventions in structs userParam 
     % vs imgfiles.
